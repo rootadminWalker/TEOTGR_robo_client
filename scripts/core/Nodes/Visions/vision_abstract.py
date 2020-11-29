@@ -35,7 +35,7 @@ class VisionNodeProgram(NodeProgram):
         super(VisionNodeProgram, self).__init__(node_id)
 
         self.output_msg = genpy.Message
-        self.vision_output = dict
+        self.vision_output = dict()
 
     @abstractmethod
     def run(self, input_data: Any, serialize=False) -> Any:

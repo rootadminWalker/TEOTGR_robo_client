@@ -1,2 +1,1 @@
-from .YOLODetection import YOLODetection
-from .PoseRecognition import PoseRecognition
+from .FaceRecognition import FaceRecognition
