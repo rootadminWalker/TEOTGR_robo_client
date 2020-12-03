@@ -1,0 +1,16 @@
+<launch>
+    <node
+            pkg="rcj_pcms_roboclient"
+            name="face_recognition"
+            type="FaceRecognitionNode.py"
+            required="true"
+            output="screen"
+    />
+    <node
+            pkg="rcj_pcms_roboclient"
+            name="turtlebot_assistant"
+            type="TurtlebotAssistant.py"
+            required="true"
+            output="screen"
+    />
+</launch>

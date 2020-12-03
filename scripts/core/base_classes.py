@@ -77,7 +77,7 @@ class NodeProgram:
 
 
 class Node:
-    def __init__(self, name: str = 'node', anonymous: bool = True):
+    def __init__(self, name: str = 'node', anonymous: bool = False):
         """
 
         Args:

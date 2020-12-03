@@ -23,11 +23,74 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 """
+import pickle
+import os
+import pprint
+from typing import List
+
+import numpy as np
 import pandas as pd
 
 
 class FaceUser:
-    def __init__(self, user_description: str):
-        self.description_path = user_description
+    def __init__(self, username: str, description: np.array = np.zeros((1, 128)), score: float = 1.0):
+        self.username = username
+        self.description = description
+        self.score = score
 
-        self.user: pd.DataFrame = pd.read_csv(self.description_path)
+    def __repr__(self):
+        return f'username:{self.username}'
+
+    def compare_with_another_face(self, another_face):
+        return np.sum(np.square(self.description - another_face.description))
+
+
+class FaceUserManager:
+    def __init__(self, database: str):
+        self.database: str = database
+        self.users: List[FaceUser] = []
+
+        # Load database base on format of database
+        if database.endswith('pickle'):
+            self._load_pickle_database(database)
+        elif os.path.isdir(database):
+            self._load_directory_csv_database(database)
+
+    def __repr__(self):
+        return f'FaceUserManager at {hex(id(self))} with users:\n{pprint.pformat(self.users)}'
+
+    def _load_pickle_database(self, database):
+        # Read the pickle database file
+        unconverted_users = pickle.load(open(database, 'rb'))
+        # Pickle format:
+        # {<username1>: <description1>, <username2>: <description2>}
+        for username, description in unconverted_users.items():
+            # Get users from pickle and convert to FaceUser
+            self.users.append(FaceUser(username=username, description=np.array(description)))
+
+    def _load_directory_csv_database(self, database):
+        for user_csv in os.listdir(database):
+            # Read csv userdata using pandas
+            csv_userdata: pd.DataFrame = pd.read_csv(f'{database}/{user_csv}.csv')
+
+            # CSV format:
+            # Column 1: <username>
+            # Data of Column 1: <description>
+            username = csv_userdata.columns[0]
+            description = np.array(csv_userdata[username])
+
+            # Convert data into FaceUser
+            self.users.append(FaceUser(username=username, description=description))
+
+    def sign_in(self, face: FaceUser):
+        difference = {scientist.username: face.compare_with_another_face(scientist) for scientist in self.users}
+        if len(difference) == 0:
+            return
+
+        most_simliar_scientist = [i for i in difference if difference[i] == min(difference.values())][0]
+
+        score = difference[most_simliar_scientist]
+        if score < 0.22:
+            return FaceUser(username=most_simliar_scientist, score=score)
+
+        return

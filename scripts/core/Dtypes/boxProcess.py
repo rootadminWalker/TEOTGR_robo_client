@@ -254,7 +254,8 @@ class BBox:
         image = image[self.y1:self.y2, self.x1:self.x2, :].copy()
         return image
 
-    def serialize_ros(self):
+    def serialize_ros(self, source_img=None):
+        self.serialize_msg = ObjectBox()
         self.serialize_msg.x1 = self.x1
         self.serialize_msg.y1 = self.y1
         self.serialize_msg.x2 = self.x2
@@ -263,6 +264,8 @@ class BBox:
         self.serialize_msg.model = self.model
         self.serialize_msg.score = self.score
         self.serialize_msg.label = self.label
+        if source_img is not None:
+            self.serialize_msg.source_img = source_img
 
         return self.serialize_msg
 
@@ -299,12 +302,13 @@ def dlibToBBox(out_boxes: List[dlib.rectangle], padding=None, shape=None):
     after_bboxing = []
     for dlib_box in out_boxes:
         after_bboxing.extend(
-            posToBBox([
+            posToBBox([[
                 dlib_box.left(),
                 dlib_box.top(),
                 dlib_box.right(),
-                dlib_box.bottom()
-            ], padding=padding, shape=shape)
+                dlib_box.bottom(),
+
+            ]], padding=padding, shape=shape)
         )
 
     return after_bboxing
