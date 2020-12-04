@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import threading
-from datetime import datetime
 from typing import List
 
 import cv2 as cv
@@ -13,7 +12,6 @@ from cv_bridge import CvBridge
 from home_robot_msgs.msg import ObjectBoxes, ObjectBox
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
-from vision_msgs.msg import Detection2DArray, Detection2D
 
 from core.Dtypes.FaceProcess import FaceUserManager, FaceUser
 from core.Dtypes.boxProcess import dlibToBBox
@@ -44,6 +42,18 @@ class FaceRecognitionNode(Node):
         self.scientist_counter = {}
         self.exist_scientist_list = []
         self.exceed_scientist_count = 10
+
+        self.scientist_id_map = {
+            '钱学森': 1,
+            '于敏': 2,
+            '茅以升': 3,
+            '钟南山': 4,
+            '邓稼先': 5,
+            '袁隆平': 6,
+            '李四光': 7,
+            '钱三强': 8,
+            '华罗庚': 9
+        }
 
         rospy.set_param('~run', True)
         rospy.set_param('~reset_scientist', False)
@@ -86,15 +96,15 @@ class FaceRecognitionNode(Node):
                 face_box = dlibToBBox([face])[0]
                 face_box.draw(frame, color=(32, 255, 0))
 
-                if scientist is None:
-                    return
-
-                scientist_name = scientist.username
-
                 cv.imshow('frame', frame)
                 cv.waitKey(16)
 
-                face_box.label = scientist_name
+                if scientist is None:
+                    continue
+
+                scientist_name = scientist.username
+
+                face_box.label = str(self.scientist_id_map[scientist_name])
 
                 if scientist_name not in self.scientist_counter:
                     self.scientist_counter[scientist_name] = 1
@@ -112,6 +122,8 @@ class FaceRecognitionNode(Node):
                     self.detections_pub.publish(self.detections)
                 except rospy.exceptions.ROSSerializationException as e:
                     rospy.logwarn(e)
+                    self.detections = ObjectBoxes()
+                    return
 
                 self.detections = ObjectBoxes()
 

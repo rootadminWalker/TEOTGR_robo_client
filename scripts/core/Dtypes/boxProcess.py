@@ -148,6 +148,8 @@ class BBox:
             self.x2 = x2
             self.y2 = y2
 
+        self._normalize_pos()
+
         if shape is not None and padding is not None:
             self.padding_box = self.__calc_padding(shape)
 
@@ -268,6 +270,12 @@ class BBox:
             self.serialize_msg.source_img = source_img
 
         return self.serialize_msg
+
+    def _normalize_pos(self):
+        self.x1 = max(0, self.x1)
+        self.y1 = max(0, self.y1)
+        self.x2 = max(0, self.x2)
+        self.y2 = max(0, self.y2)
 
 
 get_pos_from_object_box = np.vectorize(lambda box: (box.x1, box.y1, box.x2, box.y2, box.label))

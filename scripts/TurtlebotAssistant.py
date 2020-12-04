@@ -4,8 +4,6 @@ from datetime import datetime
 
 import rospy
 import cv2 as cv
-import numpy as np
-from PIL import Image, ImageFont, ImageDraw
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from home_robot_msgs.msg import ObjectBoxes
@@ -18,7 +16,7 @@ class TurtlebotAssistant(Node):
     def __init__(self, name: str = 'node', anonymous: bool = False):
         super(TurtlebotAssistant, self).__init__(name, anonymous)
 
-        self.current_target = ''
+        self.current_target = -1
         self.current_state = 'pending'
         self.move = False
 
@@ -38,6 +36,8 @@ class TurtlebotAssistant(Node):
             '钱三强': 8,
             '华罗庚': 9
         }
+
+        self.reverse_scientist_id_map = {str(v): k for k, v in self.scientist_id_map.items()}
 
         self.id_position_map = {
             1: [3.28564278687, 0.643047677701, 0.7175154107],
@@ -75,61 +75,68 @@ class TurtlebotAssistant(Node):
         rospy.set_param('~state', self.current_state)
 
     def face_recognition_callback(self, faces: ObjectBoxes):
-        faces = faces.boxes
-        if self.current_state is 'pending':
-            if len(faces) > 1 or len(faces) == 0:
-                return
-
-            current_name = faces[0].label
-            self.current_target = current_name
-
-            self.seen_scientist.append(current_name)
-
-            scientist_id = self.scientist_id_map[self.current_target]
-            self.slam_goal_pub.publish(self.xyz_to_twist(*self.id_position_map[scientist_id]))
-
-            self.speaker_pub.publish(f'辨識結果為，{self.current_target}')
-            rospy.sleep(0.1)
-            self.speaker_pub.publish(f'現在前往目標')
-
-            self.current_state = 'delay'
-            self.move = True
-
-        if self.current_state is 'delay':
-            for face in faces:
-                rospy.loginfo(face.label)
-                if face.label == self.current_target:
+        with self.lock:
+            faces = faces.boxes
+            rospy.loginfo('Get message')
+            if self.current_state is 'pending':
+                rospy.loginfo(f'State: {self.current_state}')
+                if len(faces) > 1 or len(faces) == 0:
                     return
-            else:
-                if self.move:
-                    self.current_state = 'moving'
+
+                current_id = faces[0].label
+                current_name = self.reverse_scientist_id_map[current_id]
+                self.current_target = current_id
+
+                self.seen_scientist.append(current_name)
+
+                self.slam_goal_pub.publish(self.xyz_to_twist(*self.id_position_map[int(current_id)]))
+
+                self.speaker_pub.publish(f'辨識結果為，{current_name}')
+                rospy.sleep(0.1)
+                self.speaker_pub.publish(f'現在前往目標')
+
+                self.current_state = 'delay'
+                self.move = True
+
+            if self.current_state is 'delay':
+                rospy.loginfo(f'State: {self.current_state}')
+                for face in faces:
+                    rospy.loginfo(self.reverse_scientist_id_map[face.label])
+                    if face.label == self.current_target:
+                        return
                 else:
-                    self.current_state = 'pending'
+                    rospy.loginfo('in')
+                    if self.move:
+                        self.current_state = 'moving'
+                    else:
+                        self.current_state = 'pending'
 
-        if self.current_state is 'moving':
-            for face in faces:
-                current_name = face.label
-                if current_name == self.current_target:
-                    source_img = self.bridge.imgmsg_to_cv2(face.source_img)
-                    cv.imwrite(f'/home/root_walker/face_pictures/{str(datetime.now())}.jpg', source_img)
-                    break
-            else:
-                return
+            if self.current_state is 'moving':
+                rospy.loginfo(f'State: {self.current_state}')
+                for face in faces:
+                    rospy.loginfo(f'State: {self.current_state}, inside loop')
+                    if face.label == self.current_target:
+                        source_img = self.bridge.imgmsg_to_cv2(face.source_img)
+                        cv.imwrite(f'/home/root_walker/face_pictures/{str(datetime.now())}.jpg', source_img)
+                        break
+                else:
+                    return
 
-            self.slam_goal_pub.publish(self.origin_position)
-            self.speaker_pub.publish(f'你好: {self.current_target}')
-            rospy.sleep(0.1)
-            self.speaker_pub.publish(f'現在回到起始點')
-            while rospy.get_param('/tb3_nav/status_code') != 1:
-                continue
+                self.slam_goal_pub.publish(self.origin_position)
+                self.speaker_pub.publish(f'你好: {self.reverse_scientist_id_map[self.current_target]}')
+                rospy.sleep(0.1)
+                self.speaker_pub.publish(f'現在回到起始點')
+                while rospy.get_param('/tb3_nav/status_code') != 1:
+                    rospy.loginfo('Inside waiting loop')
+                    continue
 
-            self.speaker_pub.publish('巳回到起始點，請傳遞下一個科學家的樣貌')
+                self.speaker_pub.publish('巳回到起始點，請傳遞下一個科學家的樣貌')
 
-            self.current_state = 'delay'
-            self.move = False
-            if len(self.seen_scientist) >= 9:
-                self.speaker_pub.publish('所有的目標也巳去完，下次見?')
-                rospy.signal_shutdown('Task finished')
+                self.current_state = 'delay'
+                self.move = False
+                if len(self.seen_scientist) >= 9:
+                    self.speaker_pub.publish('所有的目標也巳去完，下次見?')
+                    rospy.signal_shutdown('Task finished')
 
     @staticmethod
     def xyz_to_twist(x, y, z):

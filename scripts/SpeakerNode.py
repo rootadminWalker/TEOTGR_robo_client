@@ -60,5 +60,5 @@ class SpeakerNode(Node):
 
 
 if __name__ == '__main__':
-    node = SpeakerNode('speaker', language='zh')
+    node = SpeakerNode('speaker', language='zh', rate=250)
     node.spin()

@@ -29,7 +29,6 @@ from typing import Any
 import dlib
 from cv_bridge import CvBridge
 from home_robot_msgs.msg import ObjectBox
-from vision_msgs.msg import Detection2D, ObjectHypothesisWithPose
 
 from .vision_abstract import VisionNodeProgram
 from ...Dtypes.FaceProcess import FaceUser, FaceUserManager
