@@ -51,7 +51,7 @@ class TurtlebotAssistant(Node):
             9: [6.464579762, -1.09810222152, -0.10405248014],
         }
 
-        self.origin_position = Twist()
+        self.origin_position = [2.95693356158, -0.992036307195, 0.0642970216848]
 
         rospy.Subscriber(
             '/face_recognition/detected_faces',

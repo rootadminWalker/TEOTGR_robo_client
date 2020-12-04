@@ -59,7 +59,7 @@ class FaceRecognitionNode(Node):
         rospy.set_param('~reset_scientist', False)
 
         rospy.Subscriber(
-            '/image_raw/compressed',
+            '/camera/rgb/image_raw',
             CompressedImage,
             self.image_callback,
             queue_size=1
