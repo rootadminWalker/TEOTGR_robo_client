@@ -8,7 +8,6 @@ import dlib
 import numpy as np
 import rospy
 from PIL import Image, ImageFont, ImageDraw
-from cv_bridge import CvBridge
 from home_robot_msgs.msg import ObjectBoxes, ObjectBox
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import String
@@ -34,7 +33,6 @@ class FaceRecognitionNode(Node):
         self.face_recognizer = FaceRecognition('face_recognize', self.recognizer, self.shape_predictor)
         self.user_manager = FaceUserManager(f'{self.base}/../models/scientists_recognition/scientists.pickle')
 
-        self.bridge = CvBridge()
         self.detections = ObjectBoxes()
 
         self.lock = threading.RLock()
@@ -83,7 +81,9 @@ class FaceRecognitionNode(Node):
             rospy.set_param('~reset_scientist', False)
 
         if rospy.get_param('~run'):
-            frame = self.bridge.compressed_imgmsg_to_cv2(image)
+            buffer = np.ndarray(shape=(1, len(image.data)),
+                          dtype=np.uint8, buffer=image.data)
+            frame = cv.imdecode(buffer, cv.IMREAD_COLOR)
             faces: List[dlib.rectangle] = self.face_detector(frame)
             for face in faces:
                 scientist: FaceUser = self.face_recognizer.run(
@@ -113,7 +113,10 @@ class FaceRecognitionNode(Node):
 
                 if self.scientist_counter[scientist_name] > self.exceed_scientist_count:
                     frame = self.draw_text(frame, scientist_name, (face_box.x1, face_box.x2), color=(0, 255, 0))
-                    source_img = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+
+                    source_img = cv.imencode('.jpg', frame)[1]
+                    source_img = CompressedImage(data=np.array(source_img).tostring())
+
                     serialized_face_box: ObjectBox = face_box.serialize_ros(source_img=source_img)
                     self.detections.boxes.append(serialized_face_box)
 

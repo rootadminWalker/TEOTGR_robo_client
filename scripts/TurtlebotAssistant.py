@@ -4,7 +4,7 @@ from datetime import datetime
 
 import rospy
 import cv2 as cv
-from cv_bridge import CvBridge
+import numpy as np
 from geometry_msgs.msg import Twist
 from home_robot_msgs.msg import ObjectBoxes
 from std_msgs.msg import String
@@ -20,7 +20,6 @@ class TurtlebotAssistant(Node):
         self.current_state = 'pending'
         self.move = False
 
-        self.bridge = CvBridge()
         self.lock = threading.RLock()
 
         self.seen_scientist = []
@@ -116,7 +115,9 @@ class TurtlebotAssistant(Node):
                 for face in faces:
                     rospy.loginfo(f'State: {self.current_state}, inside loop')
                     if face.label == self.current_target:
-                        source_img = self.bridge.imgmsg_to_cv2(face.source_img)
+                        buffer = np.ndarray(shape=(1, len(face.source_img.data)),
+                                                dtype=np.uint8, buffer=face.source_img.data)
+                        source_img = cv.imdecode(buffer, cv.IMREAD_COLOR)
                         cv.imwrite(f'/home/mustar/face_pictures/{str(datetime.now())}.jpg', source_img)
                         break
                 else:
