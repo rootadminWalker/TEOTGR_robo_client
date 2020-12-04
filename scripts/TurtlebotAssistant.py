@@ -117,7 +117,7 @@ class TurtlebotAssistant(Node):
                     rospy.loginfo(f'State: {self.current_state}, inside loop')
                     if face.label == self.current_target:
                         source_img = self.bridge.imgmsg_to_cv2(face.source_img)
-                        cv.imwrite(f'/home/root_walker/face_pictures/{str(datetime.now())}.jpg', source_img)
+                        cv.imwrite(f'/home/mustar/face_pictures/{str(datetime.now())}.jpg', source_img)
                         break
                 else:
                     return
