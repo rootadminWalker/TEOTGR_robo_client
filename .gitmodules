@@ -1,0 +1,3 @@
+[submodule "RCJ_pcms_core"]
+	path = RCJ_pcms_core
+	url = https://github.com/rootadminWalker/RCJ_pcms_core.git
