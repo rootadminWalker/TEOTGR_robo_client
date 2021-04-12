@@ -12,16 +12,16 @@ class PFRobotHandler:
     W = 640
     CENTROID = (W // 2, H // 2)
 
-    FORWARD_KP = 1 / 600
-    FORWARD_KD = 1 / 800
+    FORWARD_KP = 1 / 800
+    FORWARD_KD = 1 / 1300
 
-    TURN_KP = -(1 / 120)
-    TURN_KD = 1 / 200
+    TURN_KP = -(1 / 350)
+    TURN_KD = 1 / 400
 
-    # SMOOTH_CONTROL_KP = 1 / 5
-    # SMOOTH_CONTROL_KP = 1 / 5
-    SMOOTH_CONTROL_KP = 0.05
-    SMOOTH_CONTROL_KD = 0.01
+    # SMOOTH_CONTROL_KP = 0
+    # SMOOTH_CONTROL_KD = 0
+    SMOOTH_CONTROL_KP = 0.08
+    SMOOTH_CONTROL_KD = 0.13
 
     FORWARD_SPEED_LIMIT = 1.1
 
@@ -97,13 +97,14 @@ class PFRobotHandler:
 
         forward_error = distance - PFRobotHandler.TARGET_DIST
         target_forward_speed = self.forward_controller.update(forward_error)
-        smooth_speed = self.__smooth_acceleration(self.forward_speed, target_forward_speed)
+        new_speed = self.__smooth_acceleration(self.forward_speed, target_forward_speed)
 
         # target_speed_error = target_forward_speed - self.forward_speed
         # smooth_speed = self.smooth_controller.update(target_speed_error)
         # print(target_speed_error)
 
-        self.forward_speed = min(smooth_speed, PFRobotHandler.FORWARD_SPEED_LIMIT)
+        if abs(new_speed) <= PFRobotHandler.FORWARD_SPEED_LIMIT:
+            self.forward_speed = new_speed
 
         turn_error = x - centroid_x
         target_turn_speed = self.turn_controller.update(turn_error)
