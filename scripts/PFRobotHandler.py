@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import numpy as np
 import rospy
-from core.tools import PIDController
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from home_robot_msgs.msg import PFRobotData
 from sensor_msgs.msg import Image
+
+from core.tools import PIDController
 
 
 class PFRobotHandler:
@@ -116,6 +118,28 @@ class PFRobotHandler:
         target_speed_error = target_speed - current_speed
         smooth_speed = self.smooth_controller.update(target_speed_error)
         return current_speed + smooth_speed
+
+    @staticmethod
+    def __avoid_zeropoints(point, depth_image):
+        x, y = point
+        for each in range(1, depth_image.shape[0]):
+            up = y - each
+            down = y + each
+            left_x = x - each
+            right_x = x + each
+
+            top = depth_image[up:up + 1, left_x:right_x + 1]
+            left = depth_image[up:up + 1, left_x:left_x + 1]
+            bottom = depth_image[down:down + 1, left_x:left_x + 1]
+            right = depth_image[up:down + 1, right_x:right_x + 1]
+
+            for block in [top, left, bottom, right]:
+                nonzero = block[np.nonzero(block)]
+                if nonzero.shape[0] > 0:
+                    distance = nonzero[0]
+                    break
+
+        return distance
 
 
 if __name__ == '__main__':
