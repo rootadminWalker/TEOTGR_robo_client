@@ -161,4 +161,10 @@ if __name__ == '__main__':
         twist.angular.z = turn_speed
         node.twist_publisher.publish(twist)
 
+        if len(node.fake_waypoint) > 0:
+            fake_waypoint.x = node.fake_waypoint[0]
+            fake_waypoint.y = node.fake_waypoint[1]
+            fake_waypoint.z = node.fake_waypoint[2]
+            node.fake_waypoint_pub.publish(fake_waypoint)
+
         rate.sleep()
