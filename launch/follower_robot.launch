@@ -1,0 +1,20 @@
+<launch>
+    <node
+        pkg="rcj_pcms_roboclient"
+        name="PFRHandler"
+        type="PFRobotHandler.py"
+        required="true"
+        output="screen"
+    />
+    <node
+        pkg="mr_voice"
+        name="speaker"
+        type="SpeakerNode.py"
+        required="true"
+        output="screen"
+    />
+    <include file="$(find astra_launch)/launch/astra.launch">
+        <arg name="camera" value="top_camera" />
+        <arg name="device_id" value="$(env ASTRA_TOP_CAMERA)" />
+    </include>
+</launch>
