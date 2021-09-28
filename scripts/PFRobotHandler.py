@@ -53,7 +53,8 @@ class PFRobotHandler(Node):
     FORWARD_SPEED_LIMIT = 1.
     MAXIMUM_ACCELERATION = 0.2
 
-    TARGET_DIST = 1040
+    TARGET_NORMAL_DIST = 1040
+    TARGET_SEARCHING_DIST = 980
 
     def __init__(self):
         super(PFRobotHandler, self).__init__('PFRHandler', anonymous=False)
@@ -208,14 +209,20 @@ class PFRobotHandler(Node):
                 self.forward_speed = self.__smooth_acceleration(self.forward_speed, 0)
 
             else:
+                person_follower_state = rospy.get_param('/person_follower/state')
                 distance = self.__avoid_zeropoints(self.centroid, self.depth_image, limit=30)
-                rospy.loginfo(distance)
-                distance = self.last_dist if distance == -1 else distance
+                target_dist = PFRobotHandler.TARGET_NORMAL_DIST
+
+                if person_follower_state == 'NORMAL':
+                    distance = self.last_dist if distance == -1 else distance
+                elif person_follower_state == 'SEARCHING':
+                    distance = min(distance, self.last_dist)
+                    target_dist = PFRobotHandler.TARGET_SEARCHING_DIST
 
                 x, y = self.centroid
                 centroid_x = PFRobotHandler.CENTROID[0]
 
-                forward_error = distance - PFRobotHandler.TARGET_DIST
+                forward_error = distance - target_dist
                 if distance <= 3000:
                     target_forward_speed = self.forward_controller.update(forward_error)
                 else:
@@ -238,10 +245,6 @@ class PFRobotHandler(Node):
 
                 rospy.loginfo(f'Forward_speed: {self.forward_speed}, turn_speed: {self.turn_speed}')
 
-                self.last_dist = distance
-                self.last_forward_speed = self.forward_speed
-                self.last_turn_speed = self.turn_speed
-
                 if self.rgb_image is None:
                     continue
 
@@ -255,6 +258,9 @@ class PFRobotHandler(Node):
                     fake_waypoint.z = self.fake_waypoint[2]
                     self.fake_waypoint_pub.publish(fake_waypoint)
 
+                self.last_dist = distance
+                self.last_forward_speed = self.forward_speed
+                self.last_turn_speed = self.turn_speed
             rate.sleep()
 
 
