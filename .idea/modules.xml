@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/RCJ_pcms_roboClient.iml" filepath="$PROJECT_DIR$/.idea/RCJ_pcms_roboClient.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../mr_voice/.idea/mr_voice.iml" filepath="$PROJECT_DIR$/../mr_voice/.idea/mr_voice.iml" />
     </modules>
   </component>
 </project>
