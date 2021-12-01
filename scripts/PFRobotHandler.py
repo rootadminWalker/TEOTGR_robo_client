@@ -27,11 +27,12 @@ SOFTWARE.
 import numpy as np
 import rospy
 from cv_bridge import CvBridge
-from home_robot_msgs.msg import PFRobotData, PFWaypoint
+from home_robot_msgs.msg import ObjectBox, PFWaypoint
 from sensor_msgs.msg import Image
 
 from core.Nodes import Node
-from core.tools import PIDController, Chassis
+from core.tools import PIDController, Chassis, SmoothAcceleration
+from core.Dtypes import BBox
 
 
 class PFRobotHandler(Node):
@@ -55,6 +56,7 @@ class PFRobotHandler(Node):
 
     FORWARD_SPEED_LIMIT = 1.
     MAXIMUM_ACCELERATION = 0.2
+    CONFIRM_LOST_ACCELERATION = 0.01
 
     TARGET_NORMAL_DIST = 1040
     TARGET_SEARCHING_DIST = 780
@@ -101,8 +103,8 @@ class PFRobotHandler(Node):
         self.centroid = (-1, -1)
 
         rospy.Subscriber(
-            '/PFRHandler/pf_data',
-            PFRobotData,
+            '/person_follower/current_following_box',
+            ObjectBox,
             self.info_callback,
             queue_size=1
         )
