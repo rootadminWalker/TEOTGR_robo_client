@@ -131,6 +131,8 @@ class PFRobotHandler(Node):
             PFWaypoint,
             queue_size=1
         )
+
+        rospy.wait_for_message('/person_follower/current_following_box', ObjectBox)
         self.main()
 
     def rgb_callback(self, rgb: Image):
