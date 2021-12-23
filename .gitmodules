@@ -1,0 +1,9 @@
+[submodule "mr_voice"]
+	path = mr_voice
+	url = https://github.com/rootadminWalker/mr_voice.git
+[submodule "home_robot_msgs"]
+	path = home_robot_msgs
+	url = https://github.com/FablabHome/home_robot_msgs.git
+[submodule "RCJ_pcms_core"]
+	path = RCJ_pcms_core
+	url = https://github.com/rootadminWalker/RCJ_pcms_core.git
