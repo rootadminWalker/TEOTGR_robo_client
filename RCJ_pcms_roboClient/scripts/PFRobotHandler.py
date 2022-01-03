@@ -202,7 +202,7 @@ class PFRobotHandler(Node):
             final_turn_speed = 0
 
             if state in ['NOT_INITIALIZED', 'LOST', 'CONFIRM_REIDENTIFIED'] or self.depth_image is None:
-                final_forward_speed = self.__smooth_acceleration(self.last_forward_speed, 0, self.smooth_controller)
+                final_forward_speed = self.forward_smooth_controller.smooth_speed(self.last_forward_speed, 0)
             else:
                 forward_smooth_controller = self.smooth_controller
 
