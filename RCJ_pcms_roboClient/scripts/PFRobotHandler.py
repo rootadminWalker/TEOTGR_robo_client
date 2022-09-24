@@ -30,10 +30,13 @@ import numpy as np
 import rospy
 from core.Dtypes import BBox
 from core.Nodes import Node
-from core.tools import PIDController, Chassis, SmoothAcceleration
+from core.utils.PIDController import PIDController
+from core.utils.SmoothAcceleration import SmoothAcceleration
+from core.hardware import Chassis
 from cv_bridge import CvBridge
 from home_robot_msgs.msg import ObjectBox, PFWaypoint
 from sensor_msgs.msg import Image
+from core import utils
 
 
 class PFRobotHandler(Node):
@@ -56,7 +59,7 @@ class PFRobotHandler(Node):
     DANGER_SMOOTH_CONTROL_KP = 0.25
     DANGER_SMOOTH_CONTROL_KD = 0.3
 
-    FORWARD_SPEED_LIMIT = 1.
+    FORWARD_SPEED_LIMIT = 0.8
     MAXIMUM_ACCELERATION = 0.2
     CONFIRM_LOST_ACCELERATION = 0.01
 
@@ -69,11 +72,10 @@ class PFRobotHandler(Node):
 
     def __init__(self):
         super(PFRobotHandler, self).__init__('PFRHandler', anonymous=False)
-        self.last_forward_speed = self.last_turn_speed = 0
-        self.last_dist = 0
 
-        self.last_forward_speeds = deque([], maxlen=PFRobotHandler.FORWARD_SPEED_RECORDS)
-        self.last_turn_speeds = deque([], maxlen=PFRobotHandler.TURN_SPEED_RECORDS)
+        self.last_dists = deque([PFRobotHandler.TARGET_NORMAL_DIST], maxlen=10)
+        self.last_forward_speeds = deque([0], maxlen=PFRobotHandler.FORWARD_SPEED_RECORDS)
+        self.last_turn_speeds = deque([0], maxlen=PFRobotHandler.TURN_SPEED_RECORDS)
 
         self.forward_controller = PIDController(
             PFRobotHandler.FORWARD_KP, 0, PFRobotHandler.FORWARD_KD
@@ -132,6 +134,7 @@ class PFRobotHandler(Node):
         )
 
         rospy.wait_for_message('/person_follower/current_following_box', ObjectBox)
+        rospy.loginfo('I am here')
         self.main()
 
     def rgb_callback(self, rgb: Image):
@@ -201,41 +204,46 @@ class PFRobotHandler(Node):
             final_forward_speed = 0
             final_turn_speed = 0
 
+            last_forward_speed = self.last_forward_speeds[-1]
+            last_turn_speed = self.last_turn_speeds[-1]
+            last_dist = self.last_dists[-1]
+
             if state in ['NOT_INITIALIZED', 'LOST', 'CONFIRM_REIDENTIFIED'] or self.depth_image is None:
-                final_forward_speed = self.forward_smooth_controller.smooth_speed(self.last_forward_speed, 0)
+                final_forward_speed = self.confirm_lost_smooth_controller.smooth_speed(last_forward_speed, 0)
             else:
                 forward_smooth_controller = self.smooth_controller
 
-                origin_distance = self.__avoid_zeropoints(self.centroid, self.depth_image, limit=30)
+                origin_distance = utils.depth_avoid_zeropoints(self.centroid, self.depth_image, limit=30)
                 target_dist = PFRobotHandler.TARGET_NORMAL_DIST
 
-                distance = self.last_dist if origin_distance == -1 else origin_distance
+                distance = last_dist if origin_distance is None else origin_distance
+                distance = min(distance, PFRobotHandler.MAX_DIST)
 
                 x, y = self.centroid
                 centroid_x = PFRobotHandler.CENTROID[0]
 
                 forward_error = distance - target_dist
                 forward_controller = self.forward_controller
-                if forward_error < 0:
-                    forward_controller = self.backward_controller
 
                 target_forward_speed = forward_controller.update(forward_error)
+                # if last_forward_speed * target_forward_speed < 0:
+                #     target_forward_speed = 0
 
                 turn_error = x - centroid_x
                 target_turn_speed = self.turn_controller.update(turn_error)
                 final_turn_speed = target_turn_speed
 
-                if distance <= 3000:
+                if distance <= PFRobotHandler.MAX_DIST:
                     if state == 'CONFIRM_LOST':
-                        if self.last_forward_speed - target_forward_speed < 0 or target_forward_speed < 0:
+                        if last_forward_speed - target_forward_speed < 0 or target_forward_speed < 0:
                             forward_smooth_controller = self.confirm_lost_smooth_controller
-                        final_turn_speed = forward_smooth_controller.smooth_speed(self.last_turn_speed,
+                        final_turn_speed = forward_smooth_controller.smooth_speed(last_turn_speed,
                                                                                   target_turn_speed)
                 else:
                     target_forward_speed = 0
 
                 rospy.loginfo(f'dist:{origin_distance}, error:{forward_error}, target: {target_forward_speed}')
-                final_forward_speed = forward_smooth_controller.smooth_speed(self.last_forward_speed,
+                final_forward_speed = forward_smooth_controller.smooth_speed(last_forward_speed,
                                                                              target_forward_speed)
 
                 if abs(final_forward_speed) >= PFRobotHandler.FORWARD_SPEED_LIMIT:
@@ -246,12 +254,10 @@ class PFRobotHandler(Node):
                 self.fake_waypoint = [x, y, distance]
 
                 rospy.loginfo(f'Forward_speed: {final_forward_speed}, turn_speed: {final_turn_speed}')
-                self.last_dist = distance
+                self.last_dists.append(distance)
 
-            if self.rgb_image is None:
-                continue
-
-            self.rgb_publisher.publish(self.rgb_image)
+            if self.rgb_image is not None:
+                self.rgb_publisher.publish(self.rgb_image)
 
             self.chassis.move(final_forward_speed, final_turn_speed)
 
@@ -261,8 +267,9 @@ class PFRobotHandler(Node):
                 fake_waypoint.z = self.fake_waypoint[2]
                 self.fake_waypoint_pub.publish(fake_waypoint)
 
-            self.last_forward_speed = final_forward_speed
-            self.last_turn_speed = final_turn_speed
+            self.last_forward_speeds.append(final_forward_speed)
+            self.last_turn_speeds.append(final_turn_speed)
+
             rate.sleep()
 
 
